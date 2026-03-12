@@ -1,5 +1,8 @@
 hostname R1C
 !
+no ip domain-lookup
+ip cef
+!
 interface Loopback0
  ip address 10.255.1.1 255.255.255.255
 !
@@ -7,16 +10,19 @@ interface GigabitEthernet0/0/0
  description TO-R2C
  ip address 10.0.12.1 255.255.255.252
  mpls ip
+ no shutdown
 !
 interface GigabitEthernet0/0/1
  description TO-R3C
  ip address 10.0.13.1 255.255.255.252
  mpls ip
+ no shutdown
 !
 interface GigabitEthernet0/0/2
  description TO-R1E
  ip address 10.0.101.1 255.255.255.252
  mpls ip
+ no shutdown
 !
 router ospf 1
  router-id 10.255.1.1
@@ -25,3 +31,5 @@ router ospf 1
 !
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
+!
+end
