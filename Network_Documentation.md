@@ -8,13 +8,16 @@
 5. [Device Roles & Configuration Summary](#device-roles--configuration-summary)
    - [Core Routers (P Routers)](#core-routers-p-routers)
    - [PE Routers](#pe-routers)
-   - [Aggregation Switch](#aggregation-switch)
+   - [Aggregation Switches](#aggregation-switches)
 6. [Routing Protocols](#routing-protocols)
 7. [MPLS & LDP](#mpls--ldp)
 8. [VRF & L3VPN Design](#vrf--l3vpn-design)
 9. [BGP Design](#bgp-design)
 10. [Traffic Flow](#traffic-flow)
 11. [Inter-Client Connectivity Matrix](#inter-client-connectivity-matrix)
+12. [Bugs Found & Fixes Applied](#bugs-found--fixes-applied)
+13. [Client LAN Subnets](#client-lan-subnets)
+14. [Future Roadmap — ASA Firewalls, VoIP & DC Services](#future-roadmap--asa-firewalls-voip--dc-services)
 
 ---
 
@@ -26,13 +29,23 @@ This lab simulates a **service-provider / enterprise WAN** built on physical Cis
 
 ## Hardware & Software
 
-| Device | Model | OS |
-|--------|-------|----|
-| R1C, R2C, R3C | Cisco ISR 4331 | IOS-XE 16.x (Fuji) – 17.x (Bengaluru) |
-| R1E, R2E, R3E | Cisco ISR 4331 | IOS-XE 16.x (Fuji) – 17.x (Bengaluru) |
-| SW_AGR1 | Cisco Catalyst 3750-E | IOS (IP Services) |
+| Device | Model | OS | Role |
+|--------|-------|----|------|
+| R1C, R2C, R3C | Cisco ISR 4331 | IOS-XE 16.x (Fuji) – 17.x (Bengaluru) | MPLS Core (P routers) |
+| R1E, R2E, R3E | Cisco ISR 4331 | IOS-XE 16.x (Fuji) – 17.x (Bengaluru) | Provider Edge (PE routers) |
+| SW_AGR1 | Cisco Catalyst 3750-E | IOS (IP Services) | Site 1 Aggregation (CE) |
+| SW_AGR2 | Cisco Catalyst 3750-E | IOS (IP Services) | Site 2 Aggregation (CE) |
+| SW_AGR3 | Cisco Catalyst 3750-E | IOS (IP Services) | Site 3 Aggregation + DC (CE) |
 
-> **Note:** SW_AGR2 and SW_AGR3 are referenced in the PE configs but their configuration files are not yet included in this repository. SW_AGR1 is the only switch with a config file present.
+**Available but not yet deployed:**
+
+| Device | Model | Planned Role |
+|--------|-------|--------------|
+| ASA-1 | Cisco ASA 5512-X | DC Firewall (in front of Supermicro server) |
+| ASA-2 | Cisco ASA 5512-X | Site perimeter / inter-VRF firewall |
+| ASA-3 | Cisco ASA 5512-X | Site perimeter / inter-VRF firewall |
+| Supermicro Server | Supermicro | DC server (services for all clients) |
+| Slican SIP Server | Slican | VoIP PBX (SIP trunks + phones) |
 
 ---
 
@@ -90,9 +103,9 @@ This lab simulates a **service-provider / enterprise WAN** built on physical Cis
 | P-PE | R1C | Gi0/0/2 | 10.0.101.1/30 | R1E | Gi0/0/2 | 10.0.101.2/30 |
 | P-PE | R2C | Gi0/0/2 | 10.0.102.1/30 | R2E | Gi0/0/2 | 10.0.102.2/30 |
 | P-PE | R3C | Gi0/0/2 | 10.0.103.1/30 | R3E | Gi0/0/2 | 10.0.103.2/30 |
-| PE-AGR | R1E | Gi0/0/0 (trunk) | — | SW_AGR1 | Gi1/0/1 | 172.16.1.1/30 |
-| PE-AGR | R2E | Gi0/0/0 (trunk) | — | SW_AGR2 | — | — |
-| PE-AGR | R3E | Gi0/0/0 (trunk) | — | SW_AGR3 | — | — |
+| PE-AGR | R1E | Gi0/0/0 (trunk) | — | SW_AGR1 | Gi1/0/1 (trunk) | VLANs 101,102 |
+| PE-AGR | R2E | Gi0/0/0 (trunk) | — | SW_AGR2 | Gi1/0/1 (trunk) | VLANs 103,104 |
+| PE-AGR | R3E | Gi0/0/0 (trunk) | — | SW_AGR3 | Gi1/0/1 (trunk) | VLANs 105,200 |
 
 ---
 
@@ -131,13 +144,16 @@ This lab simulates a **service-provider / enterprise WAN** built on physical Cis
 | CLIENT5 | 105 | 172.16.5.1/30 | 172.16.5.2/30 | R3E |
 | DC_CENTRAL | 200 | 172.16.100.1/30 | 172.16.100.2/30 | R3E |
 
-### SW_AGR1 — CE-side (VRF-Lite)
+### Aggregation Switches — CE-side (VRF-Lite, per-VLAN SVIs)
 
-| VRF | Interface | IP |
-|-----|-----------|-----|
-| CLIENT1 | Gi1/0/10 | 172.16.11.2/30 (toward client LAN) |
-| CLIENT2 | Gi1/0/11 | 172.16.12.2/30 (toward client LAN) |
-| Uplink to R1E | Gi1/0/1 | 172.16.1.1/30 |
+| Switch | VRF | PE-link SVI | SVI IP | LAN SVI | LAN Gateway |
+|--------|-----|------------|--------|---------|-------------|
+| SW_AGR1 | CLIENT1 | Vlan101 | 172.16.1.2/30 | Vlan301 | 192.168.1.1/24 |
+| SW_AGR1 | CLIENT2 | Vlan102 | 172.16.2.2/30 | Vlan302 | 192.168.2.1/24 |
+| SW_AGR2 | CLIENT3 | Vlan103 | 172.16.3.2/30 | Vlan303 | 192.168.3.1/24 |
+| SW_AGR2 | CLIENT4 | Vlan104 | 172.16.4.2/30 | Vlan304 | 192.168.4.1/24 |
+| SW_AGR3 | CLIENT5 | Vlan105 | 172.16.5.2/30 | Vlan305 | 192.168.5.1/24 |
+| SW_AGR3 | DC_CENTRAL | Vlan200 | 172.16.100.2/30 | Vlan500/510 | 10.100.0.1/24, 10.100.10.1/24 |
 
 ---
 
@@ -186,13 +202,30 @@ This lab simulates a **service-provider / enterprise WAN** built on physical Cis
 | CLIENT5 | 65000:5 | 65000:5 | 65000:5, 65000:100 | 172.16.5.2 | 65023 |
 | DC_CENTRAL | 65000:100 | 65000:100 | 65000:100, 65000:1–5 | 172.16.100.2 | 65023 |
 
-### Aggregation Switch
+### Aggregation Switches
 
-`SW_AGR1` (Catalyst 3750-E) implements **VRF-Lite** on the CE side. It:
-- Maintains one VRF per client (`CLIENT1`, `CLIENT2`) using IOS-style `ip vrf` (pre-named VRF syntax, compatible with 3750-E IOS)
-- Runs **eBGP (AS 65021)** per-VRF toward R1E (AS 65000)
-- Provides per-client LAN-facing interfaces (`Gi1/0/10` for CLIENT1, `Gi1/0/11` for CLIENT2)
-- The uplink to R1E (`Gi1/0/1`) carries traffic that is VLAN-tagged on the PE side (R1E uses sub-interfaces), while SW_AGR1 itself uses a plain routed port — the 802.1Q encapsulation terminates on the PE sub-interfaces
+All three Catalyst 3750-E switches implement **VRF-Lite** with **eBGP** toward their paired PE router. Each uses an 802.1Q trunk uplink carrying per-client VLANs, with SVIs providing the L3 BGP peering addresses and client LAN gateways.
+
+#### SW_AGR1 — Site 1 (AS 65021 → R1E)
+
+| VRF | PE-link VLAN | SVI IP (BGP peer) | LAN VLAN | LAN Gateway |
+|-----|----|---|---|---|
+| CLIENT1 | 101 | 172.16.1.2/30 | 301 | 192.168.1.1/24 |
+| CLIENT2 | 102 | 172.16.2.2/30 | 302 | 192.168.2.1/24 |
+
+#### SW_AGR2 — Site 2 (AS 65022 → R2E)
+
+| VRF | PE-link VLAN | SVI IP (BGP peer) | LAN VLAN | LAN Gateway |
+|-----|----|---|---|---|
+| CLIENT3 | 103 | 172.16.3.2/30 | 303 | 192.168.3.1/24 |
+| CLIENT4 | 104 | 172.16.4.2/30 | 304 | 192.168.4.1/24 |
+
+#### SW_AGR3 — Site 3 + DC (AS 65023 → R3E)
+
+| VRF | PE-link VLAN | SVI IP (BGP peer) | LAN VLAN | LAN Gateway |
+|-----|----|---|---|---|
+| CLIENT5 | 105 | 172.16.5.2/30 | 305 | 192.168.5.1/24 |
+| DC_CENTRAL | 200 | 172.16.100.2/30 | 500 (servers) / 510 (mgmt) | 10.100.0.1/24, 10.100.10.1/24 |
 
 ---
 
@@ -372,4 +405,126 @@ The triangular P-core (`R1C–R2C–R3C`) provides two equal-cost paths between 
 
 ---
 
-*Documentation generated: 2026-03-12 | Repository: JakubSzarpak/Multi-Site-WAN-Cisco-Physical-Gear-Lab*
+## Bugs Found & Fixes Applied
+
+The following issues were identified during config audit and corrected:
+
+### 🔴 Critical (would prevent routing from working)
+
+| # | Device | Issue | Fix |
+|---|--------|-------|-----|
+| 1 | **R1E, R2E, R3E** | VRF `route-target` statements placed **outside** `address-family ipv4`. On IOS-XE `vrf definition`, RT import/export are ignored unless inside the address-family block. **No VPN routes would be imported/exported.** | Moved all `route-target export/import` lines inside `address-family ipv4 … exit-address-family` |
+| 2 | **R1E, R2E, R3E** | `vrf definition` blocks appeared **after** the interfaces using `vrf forwarding`. IOS-XE requires the VRF to exist before an interface can reference it — config would be rejected on paste. | Moved all `vrf definition` blocks to the **top** of the config, before any interface |
+| 3 | **SW_AGR1** | Uplink `Gi1/0/1` had IP `172.16.1.1/30` — **identical to R1E Gi0/0/0.101**. IP conflict = duplicate address detection, no adjacency. | Converted uplink to 802.1Q trunk; moved L3 to SVIs with correct IP `172.16.1.2` |
+| 4 | **SW_AGR1** | BGP peered with `172.16.1.1` in **both** CLIENT1 and CLIENT2 VRFs. `172.16.1.1` was SW_AGR1's own address (looped to self). CLIENT2 should peer with `172.16.2.1`. | CLIENT1 peers with `172.16.1.1` (R1E .101 sub-if), CLIENT2 peers with `172.16.2.1` (R1E .102 sub-if) — each via correct SVI/VLAN |
+| 5 | **SW_AGR1** | Uplink was a **plain routed port** but R1E sends **802.1Q-tagged** frames on sub-interfaces. Frames with dot1Q tags arriving on an access/routed port would be dropped. | Changed `Gi1/0/1` to `switchport mode trunk` with `allowed vlan 101,102` |
+
+### 🟡 Functional (routing would work but with gaps)
+
+| # | Device | Issue | Fix |
+|---|--------|-------|-----|
+| 6 | **SW_AGR1** | No BGP `network` statements — client LAN subnets were never advertised into BGP. Clients could not be reached from DC_CENTRAL. | Added `network 192.168.x.0 mask 255.255.255.0` in each VRF address-family |
+| 7 | **SW_AGR1** | Client-facing ports (`Gi1/0/10`, `Gi1/0/11`) were VRF routed ports with /30 links but no LAN gateway for actual end-users. | Replaced with switchport access ports + SVI-based gateways on /24 LAN VLANs |
+| 8 | **R1E, R2E, R3E** | `Gi0/0/0` parent interface lacked `no ip address` — could cause ambiguity for IOS-XE sub-interface routing. | Added explicit `no ip address` on all PE trunk parent interfaces |
+
+### 🟢 Cosmetic / Hardening
+
+| # | Device | Issue | Fix |
+|---|--------|-------|-----|
+| 9 | All switches | No `vtp mode transparent`, no `spanning-tree mode`, no console/VTY hardening | Added `vtp mode transparent`, `rapid-pvst`, `portfast` on access ports, VTY SSH |
+| 10 | All switches | Missing VLAN definitions | Added all VLANs with descriptive names |
+
+---
+
+## Client LAN Subnets
+
+Standardized /24 LAN subnets for each client, advertised via eBGP into the MPLS backbone:
+
+| Client | LAN Subnet | Gateway (on AGR switch) | VLAN | Switch |
+|--------|-----------|------------------------|------|--------|
+| CLIENT1 | 192.168.1.0/24 | 192.168.1.1 | 301 | SW_AGR1 |
+| CLIENT2 | 192.168.2.0/24 | 192.168.2.1 | 302 | SW_AGR1 |
+| CLIENT3 | 192.168.3.0/24 | 192.168.3.1 | 303 | SW_AGR2 |
+| CLIENT4 | 192.168.4.0/24 | 192.168.4.1 | 304 | SW_AGR2 |
+| CLIENT5 | 192.168.5.0/24 | 192.168.5.1 | 305 | SW_AGR3 |
+| DC Servers | 10.100.0.0/24 | 10.100.0.1 | 500 | SW_AGR3 |
+| DC Mgmt | 10.100.10.0/24 | 10.100.10.1 | 510 | SW_AGR3 |
+
+---
+
+## Future Roadmap — ASA Firewalls, VoIP & DC Services
+
+### Phase 1 — Current (Completed ✅)
+- MPLS L3VPN backbone operational
+- All 3 PE routers with correct VRF/RT/BGP config
+- All 3 aggregation switches ready to plug in
+- Hub-and-spoke VPN: all clients → DC_CENTRAL
+
+### Phase 2 — DC Firewall (ASA-1 between SW_AGR3 and Supermicro)
+
+Place the first ASA 5512-X as a **transparent or routed firewall** between SW_AGR3 and the Supermicro server:
+
+```
+SW_AGR3 VLAN 500 ──── ASA-1 inside ──── Supermicro Server
+                      ASA-1 outside ─── (stays in DC_CENTRAL VRF)
+```
+
+**Recommended config approach:**
+- ASA-1 in **routed mode** with `inside` (10.100.0.0/24 gateway) and `outside` toward SW_AGR3
+- Inspect all traffic from clients to server; permit only required services (HTTPS, RDP, SSH, SIP, etc.)
+- NAT not required (all private addressing within MPLS VPN)
+- Security levels: inside=100, outside=0
+
+### Phase 3 — VoIP (Slican SIP Server in DC)
+
+Deploy Slican VoIP PBX on the DC server VLAN. Options:
+
+**Option A — Shared DC_CENTRAL VRF (simplest):**
+- Slican on VLAN 500 (10.100.0.x) — phones at client sites reach it via DC_CENTRAL hub
+- QoS markings (DSCP EF for voice, AF31 for signalling) must be configured on all PE and P interfaces
+- Consider adding a dedicated **VOICE VLAN** on each AGR switch for phone ports
+
+**Option B — Dedicated VOICE VRF (advanced, better isolation):**
+- New VRF `VOICE` on each PE with its own RT (e.g., `65000:10`)
+- Slican server imports `65000:10`; each client VOICE VRF exports/imports `65000:10`
+- Complete separation of voice and data traffic
+
+**QoS policy needed on all routers (both options):**
+```
+class-map match-any VOICE
+ match dscp ef
+class-map match-any VOICE-SIGNALING
+ match dscp cs3  af31
+policy-map WAN-QOS
+ class VOICE
+  priority percent 20
+ class VOICE-SIGNALING
+  bandwidth percent 5
+ class class-default
+  fair-queue
+```
+
+### Phase 4 — Site Perimeter Firewalls (ASA-2, ASA-3)
+
+Place ASA-2 and ASA-3 at two of the three sites between the AGR switch and client LANs:
+
+```
+Client LAN ──── ASA-2 ──── SW_AGR1 ──── R1E ──── MPLS Core
+Client LAN ──── ASA-3 ──── SW_AGR2 ──── R2E ──── MPLS Core
+```
+
+- Each ASA runs in routed mode, one context per client VRF (multi-context if needed)
+- Provides stateful inspection, URL filtering, and IPS at the site edge
+- ASA peers eBGP with the AGR switch or uses static routes
+
+### Suggested IP Plan for ASA Integration
+
+| ASA | Location | Inside | Outside | VRF |
+|-----|----------|--------|---------|-----|
+| ASA-1 | DC (SW_AGR3 → Server) | 10.100.0.254/24 | 10.100.0.1/24 (SW_AGR3) | DC_CENTRAL |
+| ASA-2 | Site 1 (LAN → SW_AGR1) | 192.168.1.254/24 | transit /30 to SW_AGR1 | CLIENT1/CLIENT2 |
+| ASA-3 | Site 2 (LAN → SW_AGR2) | 192.168.3.254/24 | transit /30 to SW_AGR2 | CLIENT3/CLIENT4 |
+
+---
+
+*Documentation updated: 2026-03-12 | Repository: JakubSzarpak/Multi-Site-WAN-Cisco-Physical-Gear-Lab*

@@ -1,97 +1,105 @@
 hostname R2E
-
 !
+! ================================================================
+! VRF Definitions — MUST appear before interfaces that reference them
+! On IOS-XE, route-target MUST be inside address-family ipv4
+! ================================================================
+!
+vrf definition CLIENT3
+ rd 65000:3
+ !
+ address-family ipv4
+  route-target export 65000:3
+  route-target import 65000:3
+  route-target import 65000:100
+ exit-address-family
+!
+vrf definition CLIENT4
+ rd 65000:4
+ !
+ address-family ipv4
+  route-target export 65000:4
+  route-target import 65000:4
+  route-target import 65000:100
+ exit-address-family
+!
+! ================================================================
+! Loopback — Router-ID, LDP-ID, BGP update-source
+! ================================================================
 interface Loopback0
-ip address 10.255.12.12 255.255.255.255
+ ip address 10.255.12.12 255.255.255.255
 !
-
-!
+! ================================================================
+! WAN Uplink to Core P Router R2C
+! ================================================================
 interface GigabitEthernet0/0/2
-description TO-R2C
-ip address 10.0.102.2 255.255.255.252
-mpls ip
-no shutdown
+ description TO-R2C
+ ip address 10.0.102.2 255.255.255.252
+ mpls ip
+ no shutdown
 !
-
-!
+! ================================================================
+! Trunk to Aggregation Switch SW_AGR2
+! Carries VLAN 103 (CLIENT3) and VLAN 104 (CLIENT4)
+! ================================================================
 interface GigabitEthernet0/0/0
-description TO-SW_AGR2
-no shutdown
+ description TRUNK-TO-SW_AGR2
+ no ip address
+ no shutdown
 !
-
 interface GigabitEthernet0/0/0.103
-description CLIENT3
-encapsulation dot1Q 103
-vrf forwarding CLIENT3
-ip address 172.16.3.1 255.255.255.252
+ description CLIENT3
+ encapsulation dot1Q 103
+ vrf forwarding CLIENT3
+ ip address 172.16.3.1 255.255.255.252
 !
-
 interface GigabitEthernet0/0/0.104
-description CLIENT4
-encapsulation dot1Q 104
-vrf forwarding CLIENT4
-ip address 172.16.4.1 255.255.255.252
+ description CLIENT4
+ encapsulation dot1Q 104
+ vrf forwarding CLIENT4
+ ip address 172.16.4.1 255.255.255.252
 !
-
-!
+! ================================================================
+! OSPF — Backbone IGP (transport only)
+! ================================================================
 router ospf 1
-router-id 10.255.12.12
-network 10.255.12.12 0.0.0.0 area 0
-network 10.0.102.0 0.0.0.3 area 0
+ router-id 10.255.12.12
+ network 10.255.12.12 0.0.0.0 area 0
+ network 10.0.102.0 0.0.0.3 area 0
 !
-
-!
+! ================================================================
+! MPLS LDP
+! ================================================================
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 !
-
-!
-vrf definition CLIENT3
-rd 65000:3
-route-target export 65000:3
-route-target import 65000:3
-route-target import 65000:100
-address-family ipv4
-exit-address-family
-!
-
-vrf definition CLIENT4
-rd 65000:4
-route-target export 65000:4
-route-target import 65000:4
-route-target import 65000:100
-address-family ipv4
-exit-address-family
-!
-
-!
+! ================================================================
+! MP-BGP — iBGP VPNv4 full mesh + per-VRF eBGP to CE
+! ================================================================
 router bgp 65000
-bgp log-neighbor-changes
-
-neighbor 10.255.11.11 remote-as 65000
-neighbor 10.255.11.11 update-source Loopback0
-
-neighbor 10.255.13.13 remote-as 65000
-neighbor 10.255.13.13 update-source Loopback0
-
+ bgp log-neighbor-changes
+ !
+ neighbor 10.255.11.11 remote-as 65000
+ neighbor 10.255.11.11 update-source Loopback0
+ !
+ neighbor 10.255.13.13 remote-as 65000
+ neighbor 10.255.13.13 update-source Loopback0
  !
  address-family vpnv4
-neighbor 10.255.11.11 activate
-neighbor 10.255.11.11 send-community extended
-neighbor 10.255.13.13 activate
-neighbor 10.255.13.13 send-community extended
-exit-address-family
-
+  neighbor 10.255.11.11 activate
+  neighbor 10.255.11.11 send-community extended
+  neighbor 10.255.13.13 activate
+  neighbor 10.255.13.13 send-community extended
+ exit-address-family
  !
  address-family ipv4 vrf CLIENT3
-neighbor 172.16.3.2 remote-as 65022
-neighbor 172.16.3.2 activate
-exit-address-family
-
+  neighbor 172.16.3.2 remote-as 65022
+  neighbor 172.16.3.2 activate
+ exit-address-family
  !
-address-family ipv4 vrf CLIENT4
-neighbor 172.16.4.2 remote-as 65022
-neighbor 172.16.4.2 activate
-exit-address-family
+ address-family ipv4 vrf CLIENT4
+  neighbor 172.16.4.2 remote-as 65022
+  neighbor 172.16.4.2 activate
+ exit-address-family
 !
 end

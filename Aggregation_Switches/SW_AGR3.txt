@@ -1,0 +1,170 @@
+! ================================================================
+! SW_AGR3 — Catalyst 3750-E — Site 3 Aggregation Switch + DC
+! Connected to R3E via GigabitEthernet1/0/1 (802.1Q trunk)
+! CE AS: 65023 | PE AS: 65000
+!
+! This switch serves TWO roles:
+!   1. CLIENT5 branch aggregation
+!   2. DC_CENTRAL — hub for Supermicro server / shared services
+! ================================================================
+!
+hostname SW_AGR3
+!
+no ip domain-lookup
+ip routing
+ip cef
+!
+! ================================================================
+! VTP / Spanning-Tree Hardening
+! ================================================================
+vtp mode transparent
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+!
+! ================================================================
+! VRF Definitions (IOS classic "ip vrf" for 3750-E)
+! ================================================================
+ip vrf CLIENT5
+ rd 65023:5
+ route-target export 65023:5
+ route-target import 65023:5
+!
+ip vrf DC_CENTRAL
+ rd 65023:100
+ route-target export 65023:100
+ route-target import 65023:100
+!
+! ================================================================
+! VLANs
+! ================================================================
+vlan 105
+ name CLIENT5_PE_LINK
+!
+vlan 200
+ name DC_CENTRAL_PE_LINK
+!
+vlan 305
+ name CLIENT5_LAN
+!
+vlan 500
+ name DC_SERVERS
+!
+vlan 510
+ name DC_MGMT
+!
+! ================================================================
+! Uplink to PE Router R3E — 802.1Q Trunk
+! Carries VLANs 105, 200 toward PE sub-interfaces
+! ================================================================
+interface GigabitEthernet1/0/1
+ description TRUNK-TO-R3E-Gi0/0/0
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk allowed vlan 105,200
+ no shutdown
+!
+! ================================================================
+! SVI — PE-facing (one per VRF, matching PE sub-if VLAN)
+! These IPs are the eBGP peers that R3E expects
+! ================================================================
+interface Vlan105
+ description CLIENT5-PE-LINK
+ ip vrf forwarding CLIENT5
+ ip address 172.16.5.2 255.255.255.252
+ no shutdown
+!
+interface Vlan200
+ description DC-CENTRAL-PE-LINK
+ ip vrf forwarding DC_CENTRAL
+ ip address 172.16.100.2 255.255.255.252
+ no shutdown
+!
+! ================================================================
+! Client-Facing — CLIENT5 LAN
+! ================================================================
+interface Vlan305
+ description CLIENT5-LAN-GATEWAY
+ ip vrf forwarding CLIENT5
+ ip address 192.168.5.1 255.255.255.0
+ no shutdown
+!
+! --- Example CLIENT5 access port ---
+interface GigabitEthernet1/0/10
+ description CLIENT5-ACCESS
+ switchport access vlan 305
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! ================================================================
+! DC_CENTRAL — Server VLAN (Supermicro, future services)
+! ================================================================
+interface Vlan500
+ description DC-SERVERS-GATEWAY
+ ip vrf forwarding DC_CENTRAL
+ ip address 10.100.0.1 255.255.255.0
+ no shutdown
+!
+interface Vlan510
+ description DC-MGMT-GATEWAY
+ ip vrf forwarding DC_CENTRAL
+ ip address 10.100.10.1 255.255.255.0
+ no shutdown
+!
+! --- DC Server access ports ---
+interface GigabitEthernet1/0/20
+ description SUPERMICRO-SERVER-DATA
+ switchport access vlan 500
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/21
+ description SUPERMICRO-SERVER-MGMT
+ switchport access vlan 510
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! --- Future: Slican VoIP Server ---
+interface GigabitEthernet1/0/22
+ description SLICAN-VOIP-SERVER
+ switchport access vlan 500
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! ================================================================
+! eBGP to PE Router R3E (AS 65000)
+! Each VRF has its own address-family peering
+! ================================================================
+router bgp 65023
+ bgp log-neighbor-changes
+ !
+ address-family ipv4 vrf CLIENT5
+  network 192.168.5.0 mask 255.255.255.0
+  neighbor 172.16.5.1 remote-as 65000
+  neighbor 172.16.5.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf DC_CENTRAL
+  network 10.100.0.0 mask 255.255.255.0
+  network 10.100.10.0 mask 255.255.255.0
+  neighbor 172.16.100.1 remote-as 65000
+  neighbor 172.16.100.1 activate
+ exit-address-family
+!
+! ================================================================
+! Management & Security Hardening
+! ================================================================
+no ip http server
+no ip http secure-server
+!
+line con 0
+ logging synchronous
+ exec-timeout 30 0
+line vty 0 15
+ login local
+ transport input ssh
+!
+end

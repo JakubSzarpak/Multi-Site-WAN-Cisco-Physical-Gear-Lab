@@ -1,0 +1,144 @@
+! ================================================================
+! SW_AGR2 — Catalyst 3750-E — Site 2 Aggregation Switch
+! Connected to R2E via GigabitEthernet1/0/1 (802.1Q trunk)
+! CE AS: 65022 | PE AS: 65000
+! ================================================================
+!
+hostname SW_AGR2
+!
+no ip domain-lookup
+ip routing
+ip cef
+!
+! ================================================================
+! VTP / Spanning-Tree Hardening
+! ================================================================
+vtp mode transparent
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+!
+! ================================================================
+! VRF Definitions (IOS classic "ip vrf" for 3750-E)
+! ================================================================
+ip vrf CLIENT3
+ rd 65022:3
+ route-target export 65022:3
+ route-target import 65022:3
+!
+ip vrf CLIENT4
+ rd 65022:4
+ route-target export 65022:4
+ route-target import 65022:4
+!
+! ================================================================
+! VLANs
+! ================================================================
+vlan 103
+ name CLIENT3_PE_LINK
+!
+vlan 104
+ name CLIENT4_PE_LINK
+!
+vlan 303
+ name CLIENT3_LAN
+!
+vlan 304
+ name CLIENT4_LAN
+!
+! ================================================================
+! Uplink to PE Router R2E — 802.1Q Trunk
+! Carries VLANs 103, 104 toward PE sub-interfaces
+! ================================================================
+interface GigabitEthernet1/0/1
+ description TRUNK-TO-R2E-Gi0/0/0
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk allowed vlan 103,104
+ no shutdown
+!
+! ================================================================
+! SVI — PE-facing (one per VRF, one per VLAN)
+! These IPs are the eBGP peers that R2E expects
+! ================================================================
+interface Vlan103
+ description CLIENT3-PE-LINK
+ ip vrf forwarding CLIENT3
+ ip address 172.16.3.2 255.255.255.252
+ no shutdown
+!
+interface Vlan104
+ description CLIENT4-PE-LINK
+ ip vrf forwarding CLIENT4
+ ip address 172.16.4.2 255.255.255.252
+ no shutdown
+!
+! ================================================================
+! Client-Facing Access Ports (LAN side)
+! Assign to client VLANs; SVI provides L3 gateway
+! ================================================================
+interface Vlan303
+ description CLIENT3-LAN-GATEWAY
+ ip vrf forwarding CLIENT3
+ ip address 192.168.3.1 255.255.255.0
+ no shutdown
+!
+interface Vlan304
+ description CLIENT4-LAN-GATEWAY
+ ip vrf forwarding CLIENT4
+ ip address 192.168.4.1 255.255.255.0
+ no shutdown
+!
+! --- Example client access port for CLIENT3 ---
+interface GigabitEthernet1/0/10
+ description CLIENT3-ACCESS
+ switchport access vlan 303
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! --- Example client access port for CLIENT4 ---
+interface GigabitEthernet1/0/11
+ description CLIENT4-ACCESS
+ switchport access vlan 304
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! ================================================================
+! eBGP to PE Router R2E (AS 65000)
+! Each VRF has its own address-family peering
+! ================================================================
+router bgp 65022
+ bgp log-neighbor-changes
+ !
+ address-family ipv4 vrf CLIENT3
+  network 192.168.3.0 mask 255.255.255.0
+  neighbor 172.16.3.1 remote-as 65000
+  neighbor 172.16.3.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT4
+  network 192.168.4.0 mask 255.255.255.0
+  neighbor 172.16.4.1 remote-as 65000
+  neighbor 172.16.4.1 activate
+ exit-address-family
+!
+! ================================================================
+! Static routes — redistribute connected client LANs into BGP
+! (network statements above handle this; add redistribute if needed)
+! ================================================================
+!
+! ================================================================
+! Management & Security Hardening
+! ================================================================
+no ip http server
+no ip http secure-server
+!
+line con 0
+ logging synchronous
+ exec-timeout 30 0
+line vty 0 15
+ login local
+ transport input ssh
+!
+end

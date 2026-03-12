@@ -1,71 +1,149 @@
-! ======================================
-! Hostname and basic settings
-! ======================================
+! ================================================================
+! SW_AGR1 — Catalyst 3750-E — Site 1 Aggregation Switch
+! Connected to R1E via GigabitEthernet1/0/1 (802.1Q trunk)
+! CE AS: 65021 | PE AS: 65000
+! ================================================================
+!
 hostname SW_AGR1
 !
 no ip domain-lookup
 ip routing
 ip cef
 !
-! ======================================
-! VRF Definitions
-! ======================================
+! ================================================================
+! VTP / Spanning-Tree Hardening
+! ================================================================
+vtp mode transparent
+spanning-tree mode rapid-pvst
+spanning-tree extend system-id
+!
+! ================================================================
+! VRF Definitions (IOS classic "ip vrf" for 3750-E)
+! ================================================================
 ip vrf CLIENT1
-rd 65021:1
-route-target export 65021:1
-route-target import 65021:1
+ rd 65021:1
+ route-target export 65021:1
+ route-target import 65021:1
 !
 ip vrf CLIENT2
-rd 65021:2
-route-target export 65021:2
-route-target import 65021:2
+ rd 65021:2
+ route-target export 65021:2
+ route-target import 65021:2
 !
-! ======================================
-! Interfaces to PE Router (R1E)
-! ======================================
+! ================================================================
+! VLANs
+! ================================================================
+vlan 101
+ name CLIENT1_PE_LINK
+!
+vlan 102
+ name CLIENT2_PE_LINK
+!
+vlan 301
+ name CLIENT1_LAN
+!
+vlan 302
+ name CLIENT2_LAN
+!
+! ================================================================
+! Uplink to PE Router R1E — 802.1Q Trunk
+! Carries VLANs 101, 102 toward PE sub-interfaces
+!
+! BUG FIXED: Old config used a plain routed port with IP 172.16.1.1
+!   which conflicted with R1E Gi0/0/0.101 (same IP). R1E sends
+!   dot1Q-tagged frames; the switch MUST use a trunk + SVIs.
+! ================================================================
 interface GigabitEthernet1/0/1
-description TO-R1E
-ip address 172.16.1.1 255.255.255.252
-no shutdown
+ description TRUNK-TO-R1E-Gi0/0/0
+ switchport trunk encapsulation dot1q
+ switchport mode trunk
+ switchport trunk allowed vlan 101,102
+ no shutdown
 !
-! ======================================
-! Client Access Interfaces
-! Each client gets its own VRF
-! ======================================
-interface GigabitEthernet1/0/10
- description CLIENT1_SITE
+! ================================================================
+! SVI — PE-facing (one per VRF, one per VLAN)
+! These IPs are the eBGP peers that R1E expects
+!
+! BUG FIXED: Must be 172.16.1.2 and 172.16.2.2 (not 172.16.1.1)
+! ================================================================
+interface Vlan101
+ description CLIENT1-PE-LINK
  ip vrf forwarding CLIENT1
- ip address 172.16.11.2 255.255.255.252
+ ip address 172.16.1.2 255.255.255.252
  no shutdown
 !
-interface GigabitEthernet1/0/11
- description CLIENT2_SITE
+interface Vlan102
+ description CLIENT2-PE-LINK
  ip vrf forwarding CLIENT2
- ip address 172.16.12.2 255.255.255.252
+ ip address 172.16.2.2 255.255.255.252
  no shutdown
 !
-! ======================================
-! eBGP to PE Router
-! Each VRF peers with PE
-! ======================================
+! ================================================================
+! Client-Facing Access Ports (LAN side)
+! Assign to client VLANs; SVI provides L3 gateway
+! ================================================================
+interface Vlan301
+ description CLIENT1-LAN-GATEWAY
+ ip vrf forwarding CLIENT1
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+!
+interface Vlan302
+ description CLIENT2-LAN-GATEWAY
+ ip vrf forwarding CLIENT2
+ ip address 192.168.2.1 255.255.255.0
+ no shutdown
+!
+! --- Example client access port for CLIENT1 ---
+interface GigabitEthernet1/0/10
+ description CLIENT1-ACCESS
+ switchport access vlan 301
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! --- Example client access port for CLIENT2 ---
+interface GigabitEthernet1/0/11
+ description CLIENT2-ACCESS
+ switchport access vlan 302
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! ================================================================
+! eBGP to PE Router R1E (AS 65000)
+! Each VRF has its own address-family peering
+!
+! BUG FIXED: Old config peered with 172.16.1.1 (its own IP!) in
+!   both VRFs, and had no network statements. Now correctly peers
+!   with R1E sub-interface IPs and advertises client LANs.
+! ================================================================
 router bgp 65021
  bgp log-neighbor-changes
+ !
+ address-family ipv4 vrf CLIENT1
+  network 192.168.1.0 mask 255.255.255.0
+  neighbor 172.16.1.1 remote-as 65000
+  neighbor 172.16.1.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT2
+  network 192.168.2.0 mask 255.255.255.0
+  neighbor 172.16.2.1 remote-as 65000
+  neighbor 172.16.2.1 activate
+ exit-address-family
 !
- ! CLIENT1 VRF
-address-family ipv4 vrf CLIENT1
-neighbor 172.16.1.1 remote-as 65000
-neighbor 172.16.1.1 activate
-exit-address-family
+! ================================================================
+! Management & Security Hardening
+! ================================================================
+no ip http server
+no ip http secure-server
 !
- ! CLIENT2 VRF
-address-family ipv4 vrf CLIENT2
-neighbor 172.16.1.1 remote-as 65000
-neighbor 172.16.1.1 activate
-exit-address-family
+line con 0
+ logging synchronous
+ exec-timeout 30 0
+line vty 0 15
+ login local
+ transport input ssh
 !
-! ======================================
-! Summary
-! VRF-Lite + eBGP to PE is ready
-! No routing leakage yet; clients isolated
-! ======================================
 end

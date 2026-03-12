@@ -1,97 +1,105 @@
 hostname R1E
-
 !
+! ================================================================
+! VRF Definitions — MUST appear before interfaces that reference them
+! On IOS-XE, route-target MUST be inside address-family ipv4
+! ================================================================
+!
+vrf definition CLIENT1
+ rd 65000:1
+ !
+ address-family ipv4
+  route-target export 65000:1
+  route-target import 65000:1
+  route-target import 65000:100
+ exit-address-family
+!
+vrf definition CLIENT2
+ rd 65000:2
+ !
+ address-family ipv4
+  route-target export 65000:2
+  route-target import 65000:2
+  route-target import 65000:100
+ exit-address-family
+!
+! ================================================================
+! Loopback — Router-ID, LDP-ID, BGP update-source
+! ================================================================
 interface Loopback0
  ip address 10.255.11.11 255.255.255.255
 !
-
-!
+! ================================================================
+! WAN Uplink to Core P Router R1C
+! ================================================================
 interface GigabitEthernet0/0/2
  description TO-R1C
  ip address 10.0.101.2 255.255.255.252
  mpls ip
  no shutdown
 !
-
-!
+! ================================================================
+! Trunk to Aggregation Switch SW_AGR1
+! Carries VLAN 101 (CLIENT1) and VLAN 102 (CLIENT2)
+! ================================================================
 interface GigabitEthernet0/0/0
- description TO-SW_AGR1
+ description TRUNK-TO-SW_AGR1
+ no ip address
  no shutdown
 !
-
 interface GigabitEthernet0/0/0.101
-description CLIENT1
-encapsulation dot1Q 101
-vrf forwarding CLIENT1
-ip address 172.16.1.1 255.255.255.252
+ description CLIENT1
+ encapsulation dot1Q 101
+ vrf forwarding CLIENT1
+ ip address 172.16.1.1 255.255.255.252
 !
-
 interface GigabitEthernet0/0/0.102
  description CLIENT2
  encapsulation dot1Q 102
  vrf forwarding CLIENT2
  ip address 172.16.2.1 255.255.255.252
 !
-
-!
+! ================================================================
+! OSPF — Backbone IGP (transport only)
+! ================================================================
 router ospf 1
-router-id 10.255.11.11
-network 10.255.11.11 0.0.0.0 area 0
-network 10.0.101.0 0.0.0.3 area 0
+ router-id 10.255.11.11
+ network 10.255.11.11 0.0.0.0 area 0
+ network 10.0.101.0 0.0.0.3 area 0
 !
-
-!
+! ================================================================
+! MPLS LDP
+! ================================================================
 mpls label protocol ldp
 mpls ldp router-id Loopback0 force
 !
-
-!
-vrf definition CLIENT1
-rd 65000:1
-route-target export 65000:1
-route-target import 65000:1
-route-target import 65000:100
-address-family ipv4
-exit-address-family
-!
-
-vrf definition CLIENT2
-rd 65000:2
-route-target export 65000:2
-route-target import 65000:2
-route-target import 65000:100
-address-family ipv4
-exit-address-family
-!
-
-!
+! ================================================================
+! MP-BGP — iBGP VPNv4 full mesh + per-VRF eBGP to CE
+! ================================================================
 router bgp 65000
  bgp log-neighbor-changes
-
-neighbor 10.255.12.12 remote-as 65000
-neighbor 10.255.12.12 update-source Loopback0
-
-neighbor 10.255.13.13 remote-as 65000
-neighbor 10.255.13.13 update-source Loopback0
-
+ !
+ neighbor 10.255.12.12 remote-as 65000
+ neighbor 10.255.12.12 update-source Loopback0
+ !
+ neighbor 10.255.13.13 remote-as 65000
+ neighbor 10.255.13.13 update-source Loopback0
  !
  address-family vpnv4
-neighbor 10.255.12.12 activate
-neighbor 10.255.12.12 send-community extended
-neighbor 10.255.13.13 activate
-neighbor 10.255.13.13 send-community extended
-exit-address-family
-
+  neighbor 10.255.12.12 activate
+  neighbor 10.255.12.12 send-community extended
+  neighbor 10.255.13.13 activate
+  neighbor 10.255.13.13 send-community extended
+ exit-address-family
  !
  address-family ipv4 vrf CLIENT1
-neighbor 172.16.1.2 remote-as 65021
-neighbor 172.16.1.2 activate
-exit-address-family
-
+  neighbor 172.16.1.2 remote-as 65021
+  neighbor 172.16.1.2 activate
+ exit-address-family
  !
-address-family ipv4 vrf CLIENT2
-neighbor 172.16.2.2 remote-as 65021
-neighbor 172.16.2.2 activate
-exit-address-family
+ address-family ipv4 vrf CLIENT2
+  neighbor 172.16.2.2 remote-as 65021
+  neighbor 172.16.2.2 activate
+ exit-address-family
 !
 end
