@@ -1,0 +1,27 @@
+hostname R3C
+!
+interface Loopback0
+ ip address 10.255.3.3 255.255.255.255
+!
+interface GigabitEthernet0/0/0
+ description TO-R1C
+ ip address 10.0.13.2 255.255.255.252
+ mpls ip
+!
+interface GigabitEthernet0/0/1
+ description TO-R2C
+ ip address 10.0.23.2 255.255.255.252
+ mpls ip
+!
+interface GigabitEthernet0/0/2
+ description TO-R3E
+ ip address 10.0.103.1 255.255.255.252
+ mpls ip
+!
+router ospf 1
+ router-id 10.255.3.3
+ network 10.0.0.0 0.255.255.255 area 0
+ network 10.255.3.3 0.0.0.0 area 0
+!
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force

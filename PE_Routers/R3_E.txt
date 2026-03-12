@@ -1,0 +1,99 @@
+hostname R3E
+
+!
+interface Loopback0
+ip address 10.255.13.13 255.255.255.255
+!
+
+!
+interface GigabitEthernet0/0/2
+description TO-R3C
+ip address 10.0.103.2 255.255.255.252
+mpls ip
+no shutdown
+!
+
+!
+interface GigabitEthernet0/0/0
+description TO-SW_AGR3
+no shutdown
+!
+
+interface GigabitEthernet0/0/0.105
+description CLIENT5
+encapsulation dot1Q 105
+vrf forwarding CLIENT5
+ip address 172.16.5.1 255.255.255.252
+!
+
+interface GigabitEthernet0/0/0.200
+description DC_CENTRAL
+encapsulation dot1Q 200
+vrf forwarding DC_CENTRAL
+ip address 172.16.100.1 255.255.255.252
+!
+
+!
+router ospf 1
+router-id 10.255.13.13
+network 10.255.13.13 0.0.0.0 area 0
+network 10.0.103.0 0.0.0.3 area 0
+!
+
+!
+mpls label protocol ldp
+mpls ldp router-id Loopback0 force
+!
+
+!
+vrf definition CLIENT5
+rd 65000:5
+route-target export 65000:5
+route-target import 65000:5
+route-target import 65000:100
+address-family ipv4
+exit-address-family
+!
+
+vrf definition DC_CENTRAL
+rd 65000:100
+route-target export 65000:100
+route-target import 65000:100
+route-target import 65000:1
+route-target import 65000:2
+route-target import 65000:3
+route-target import 65000:4
+route-target import 65000:5
+address-family ipv4
+exit-address-family
+!
+
+!
+router bgp 65000
+bgp log-neighbor-changes
+
+neighbor 10.255.11.11 remote-as 65000
+neighbor 10.255.11.11 update-source Loopback0
+
+neighbor 10.255.12.12 remote-as 65000
+neighbor 10.255.12.12 update-source Loopback0
+
+address-family vpnv4
+neighbor 10.255.11.11 activate
+neighbor 10.255.11.11 send-community extended
+neighbor 10.255.12.12 activate
+neighbor 10.255.12.12 send-community extended
+exit-address-family
+
+address-family ipv4 vrf CLIENT5
+neighbor 172.16.5.2 remote-as 65023
+neighbor 172.16.5.2 activate
+exit-address-family
+
+address-family ipv4 vrf DC_CENTRAL
+neighbor 172.16.100.2 remote-as 65023
+neighbor 172.16.100.2 activate
+exit-address-family
+!
+
+end
