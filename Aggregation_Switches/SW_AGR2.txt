@@ -105,20 +105,36 @@ interface GigabitEthernet1/0/11
  no shutdown
 !
 ! ================================================================
+! OSPF VRF-Lite for Client Routers
+! Each client router will peer with this switch via OSPF and
+! receive only a default route.
+! ================================================================
+router ospf 30 vrf CLIENT3
+ default-information originate always
+ redistribute bgp 65022 subnets
+ network 192.168.3.0 0.0.0.255 area 0
+!
+router ospf 40 vrf CLIENT4
+ default-information originate always
+ redistribute bgp 65022 subnets
+ network 192.168.4.0 0.0.0.255 area 0
+!
+! ================================================================
 ! eBGP to PE Router R2E (AS 65000)
 ! Each VRF has its own address-family peering
 ! ================================================================
 router bgp 65022
+ bgp router-id 192.168.255.2
  bgp log-neighbor-changes
  !
  address-family ipv4 vrf CLIENT3
-  network 192.168.3.0 mask 255.255.255.0
+  redistribute ospf 30
   neighbor 172.16.3.1 remote-as 65000
   neighbor 172.16.3.1 activate
  exit-address-family
  !
  address-family ipv4 vrf CLIENT4
-  network 192.168.4.0 mask 255.255.255.0
+  redistribute ospf 40
   neighbor 172.16.4.1 remote-as 65000
   neighbor 172.16.4.1 activate
  exit-address-family

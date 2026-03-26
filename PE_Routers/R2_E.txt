@@ -1,6 +1,16 @@
 hostname R2E
 !
 ! ================================================================
+! Global SR-MPLS
+! ================================================================
+segment-routing mpls
+ !
+ set-attributes
+  address-family ipv4
+   sr-label-preferred
+  exit-address-family
+!
+! ================================================================
 ! VRF Definitions — MUST appear before interfaces that reference them
 ! On IOS-XE, route-target MUST be inside address-family ipv4
 ! ================================================================
@@ -12,6 +22,7 @@ vrf definition CLIENT3
   route-target export 65000:3
   route-target import 65000:3
   route-target import 65000:100
+  route-target import 65000:99
  exit-address-family
 !
 vrf definition CLIENT4
@@ -21,13 +32,16 @@ vrf definition CLIENT4
   route-target export 65000:4
   route-target import 65000:4
   route-target import 65000:100
+  route-target import 65000:99
  exit-address-family
 !
 ! ================================================================
-! Loopback — Router-ID, LDP-ID, BGP update-source
+! Loopback — Router-ID, SR-ID, BGP update-source
 ! ================================================================
 interface Loopback0
  ip address 10.255.12.12 255.255.255.255
+ ip router isis CORE
+ isis prefix-sid index 120
 !
 ! ================================================================
 ! WAN Uplink to Core P Router R2C
@@ -35,7 +49,8 @@ interface Loopback0
 interface GigabitEthernet0/0/2
  description TO-R2C
  ip address 10.0.102.2 255.255.255.252
- mpls ip
+ ip router isis CORE
+ isis network point-to-point
  no shutdown
 !
 ! ================================================================
@@ -60,36 +75,33 @@ interface GigabitEthernet0/0/0.104
  ip address 172.16.4.1 255.255.255.252
 !
 ! ================================================================
-! OSPF — Backbone IGP (transport only)
+! IS-IS — Backbone IGP (transport + segment routing)
 ! ================================================================
-router ospf 1
- router-id 10.255.12.12
- network 10.255.12.12 0.0.0.0 area 0
- network 10.0.102.0 0.0.0.3 area 0
+router isis CORE
+ net 49.0001.0102.5501.2012.00
+ is-type level-2-only
+ metric-style wide
+ passive-interface Loopback0
+ fast-reroute per-prefix level-2 all
+ segment-routing mpls
 !
 ! ================================================================
-! MPLS LDP
-! ================================================================
-mpls label protocol ldp
-mpls ldp router-id Loopback0 force
-!
-! ================================================================
-! MP-BGP — iBGP VPNv4 full mesh + per-VRF eBGP to CE
+! MP-BGP — iBGP VPNv4 to Route Reflector + per-VRF eBGP to CE
 ! ================================================================
 router bgp 65000
  bgp log-neighbor-changes
  !
- neighbor 10.255.11.11 remote-as 65000
- neighbor 10.255.11.11 update-source Loopback0
+ neighbor 10.255.1.1 remote-as 65000
+ neighbor 10.255.1.1 update-source Loopback0
  !
- neighbor 10.255.13.13 remote-as 65000
- neighbor 10.255.13.13 update-source Loopback0
+ neighbor 10.255.2.2 remote-as 65000
+ neighbor 10.255.2.2 update-source Loopback0
  !
  address-family vpnv4
-  neighbor 10.255.11.11 activate
-  neighbor 10.255.11.11 send-community extended
-  neighbor 10.255.13.13 activate
-  neighbor 10.255.13.13 send-community extended
+  neighbor 10.255.1.1 activate
+  neighbor 10.255.1.1 send-community extended
+  neighbor 10.255.2.2 activate
+  neighbor 10.255.2.2 send-community extended
  exit-address-family
  !
  address-family ipv4 vrf CLIENT3

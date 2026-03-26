@@ -3,33 +3,45 @@ hostname R3C
 no ip domain-lookup
 ip cef
 !
+segment-routing mpls
+ !
+ set-attributes
+  address-family ipv4
+   sr-label-preferred
+  exit-address-family
+!
 interface Loopback0
  ip address 10.255.3.3 255.255.255.255
+ ip router isis CORE
+ isis prefix-sid index 30
 !
 interface GigabitEthernet0/0/0
  description TO-R1C
  ip address 10.0.13.2 255.255.255.252
- mpls ip
+ ip router isis CORE
+ isis network point-to-point
  no shutdown
 !
 interface GigabitEthernet0/0/1
  description TO-R2C
  ip address 10.0.23.2 255.255.255.252
- mpls ip
+ ip router isis CORE
+ isis network point-to-point
  no shutdown
 !
 interface GigabitEthernet0/0/2
  description TO-R3E
  ip address 10.0.103.1 255.255.255.252
- mpls ip
+ ip router isis CORE
+ isis network point-to-point
  no shutdown
 !
-router ospf 1
- router-id 10.255.3.3
- network 10.0.0.0 0.255.255.255 area 0
- network 10.255.3.3 0.0.0.0 area 0
-!
-mpls label protocol ldp
-mpls ldp router-id Loopback0 force
+router isis CORE
+ net 49.0001.0102.5500.3003.00
+ is-type level-2-only
+ metric-style wide
+ passive-interface Loopback0
+ fast-reroute per-prefix level-2 all
+ segment-routing mpls
 !
 end

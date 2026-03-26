@@ -117,18 +117,38 @@ interface GigabitEthernet1/0/11
 ! BUG FIXED: Old config peered with 172.16.1.1 (its own IP!) in
 !   both VRFs, and had no network statements. Now correctly peers
 !   with R1E sub-interface IPs and advertises client LANs.
+!
+! ================================================================
+! OSPF VRF-Lite for Client Routers
+! Each client router will peer with this switch via OSPF and
+! receive only a default route.
+! ================================================================
+router ospf 10 vrf CLIENT1
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.1.0 0.0.0.255 area 0
+!
+router ospf 20 vrf CLIENT2
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.2.0 0.0.0.255 area 0
+!
+! ================================================================
+! eBGP to PE Router R1E (AS 65000)
+! Each VRF has its own address-family peering
 ! ================================================================
 router bgp 65021
+ bgp router-id 192.168.255.1
  bgp log-neighbor-changes
  !
  address-family ipv4 vrf CLIENT1
-  network 192.168.1.0 mask 255.255.255.0
+  redistribute ospf 10
   neighbor 172.16.1.1 remote-as 65000
   neighbor 172.16.1.1 activate
  exit-address-family
  !
  address-family ipv4 vrf CLIENT2
-  network 192.168.2.0 mask 255.255.255.0
+  redistribute ospf 20
   neighbor 172.16.2.1 remote-as 65000
   neighbor 172.16.2.1 activate
  exit-address-family

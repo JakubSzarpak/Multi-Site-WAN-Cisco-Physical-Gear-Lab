@@ -34,6 +34,11 @@ ip vrf DC_CENTRAL
  route-target export 65023:100
  route-target import 65023:100
 !
+ip vrf DC_PUB
+ rd 65023:99
+ route-target export 65023:99
+ route-target import 65023:99
+!
 ! ================================================================
 ! VLANs
 ! ================================================================
@@ -60,7 +65,7 @@ interface GigabitEthernet1/0/1
  description TRUNK-TO-R3E-Gi0/0/0
  switchport trunk encapsulation dot1q
  switchport mode trunk
- switchport trunk allowed vlan 105,200
+ switchport trunk allowed vlan 105,200,201
  no shutdown
 !
 ! ================================================================
@@ -79,6 +84,12 @@ interface Vlan200
  ip address 172.16.100.2 255.255.255.252
  no shutdown
 !
+interface Vlan201
+ description DC-PUB-PE-LINK
+ ip vrf forwarding DC_PUB
+ ip address 172.16.199.2 255.255.255.252
+ no shutdown
+!
 ! ================================================================
 ! Client-Facing — CLIENT5 LAN
 ! ================================================================
@@ -94,6 +105,15 @@ interface GigabitEthernet1/0/10
  switchport access vlan 305
  switchport mode access
  spanning-tree portfast
+ no shutdown
+!
+! ================================================================
+! DC_PUB — Public VMs Network (Hosted on Server)
+! ================================================================
+interface Vlan600
+ description PUBLIC-VMS-GATEWAY
+ ip vrf forwarding DC_PUB
+ ip address 203.0.113.1 255.255.255.0
  no shutdown
 !
 ! ================================================================
@@ -134,24 +154,59 @@ interface GigabitEthernet1/0/22
  spanning-tree portfast
  no shutdown
 !
+! --- Public VMs Server Port ---
+interface GigabitEthernet1/0/23
+ description PUBLIC-VMS-SERVER
+ switchport access vlan 600
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+! ================================================================
+! OSPF VRF-Lite for Client Routers & DC
+! Each client router will peer with this switch via OSPF and
+! receive only a default route.
+! ================================================================
+router ospf 50 vrf CLIENT5
+ default-information originate always
+ redistribute bgp 65023 subnets
+ network 192.168.5.0 0.0.0.255 area 0
+!
+router ospf 100 vrf DC_CENTRAL
+ default-information originate always
+ redistribute bgp 65023 subnets
+ network 10.100.0.0 0.0.0.255 area 0
+ network 10.100.10.0 0.0.0.255 area 0
+!
+router ospf 199 vrf DC_PUB
+ default-information originate always
+ redistribute bgp 65023 subnets
+ network 203.0.113.0 0.0.0.255 area 0
+!
 ! ================================================================
 ! eBGP to PE Router R3E (AS 65000)
 ! Each VRF has its own address-family peering
 ! ================================================================
 router bgp 65023
+ bgp router-id 192.168.255.3
  bgp log-neighbor-changes
  !
  address-family ipv4 vrf CLIENT5
-  network 192.168.5.0 mask 255.255.255.0
+  redistribute ospf 50
   neighbor 172.16.5.1 remote-as 65000
   neighbor 172.16.5.1 activate
  exit-address-family
  !
  address-family ipv4 vrf DC_CENTRAL
-  network 10.100.0.0 mask 255.255.255.0
-  network 10.100.10.0 mask 255.255.255.0
+  redistribute ospf 100
   neighbor 172.16.100.1 remote-as 65000
   neighbor 172.16.100.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf DC_PUB
+  redistribute ospf 199
+  neighbor 172.16.199.1 remote-as 65000
+  neighbor 172.16.199.1 activate
  exit-address-family
 !
 ! ================================================================
