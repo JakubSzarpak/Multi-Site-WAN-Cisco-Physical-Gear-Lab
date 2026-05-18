@@ -1,7 +1,22 @@
 ! ================================================================
-! SW_AGR1 — Catalyst 3750-E — Site 1 Aggregation Switch
+! SW_AGR1 — Catalyst 3750-E (48-port) — Site 1 Aggregation Switch
 ! Connected to R1E via GigabitEthernet1/0/1 (802.1Q trunk)
 ! CE AS: 65021 | PE AS: 65000
+!
+! Tenant model:
+!   CLIENT1-20  : 20 isolated per-tenant VRFs on ODD ports 47..9
+!   SHARED_101  : 1 shared VRF spanning EVEN ports 48..10
+!                 (20 outlets all routing through one VRF)
+!
+! DC reachability:
+!   ALL VRFs reach Supermicro (DC_PUB, 65000:99 import).
+!   No tenant on this switch reaches Slican (PBX).
+!
+! Port map (Gi1/0/X):
+!   1       PE trunk to R1E
+!   2..8    spare / management
+!   47,45,..,9   CLIENT1..CLIENT20 access  (LAN VLAN 201..220)
+!   48,46,..,10  SHARED_101 outlets 1..20  (LAN VLAN 251..270)
 ! ================================================================
 !
 hostname SW_AGR1
@@ -19,6 +34,8 @@ spanning-tree extend system-id
 !
 ! ================================================================
 ! VRF Definitions (IOS classic "ip vrf" for 3750-E)
+! Switch-side RTs are locally scoped (3750-E has no VPNv4).
+! PE-side RT policy on R1E is what actually controls reachability.
 ! ================================================================
 ip vrf CLIENT1
  rd 65021:1
@@ -30,8 +47,103 @@ ip vrf CLIENT2
  route-target export 65021:2
  route-target import 65021:2
 !
+ip vrf CLIENT3
+ rd 65021:3
+ route-target export 65021:3
+ route-target import 65021:3
+!
+ip vrf CLIENT4
+ rd 65021:4
+ route-target export 65021:4
+ route-target import 65021:4
+!
+ip vrf CLIENT5
+ rd 65021:5
+ route-target export 65021:5
+ route-target import 65021:5
+!
+ip vrf CLIENT6
+ rd 65021:6
+ route-target export 65021:6
+ route-target import 65021:6
+!
+ip vrf CLIENT7
+ rd 65021:7
+ route-target export 65021:7
+ route-target import 65021:7
+!
+ip vrf CLIENT8
+ rd 65021:8
+ route-target export 65021:8
+ route-target import 65021:8
+!
+ip vrf CLIENT9
+ rd 65021:9
+ route-target export 65021:9
+ route-target import 65021:9
+!
+ip vrf CLIENT10
+ rd 65021:10
+ route-target export 65021:10
+ route-target import 65021:10
+!
+ip vrf CLIENT11
+ rd 65021:11
+ route-target export 65021:11
+ route-target import 65021:11
+!
+ip vrf CLIENT12
+ rd 65021:12
+ route-target export 65021:12
+ route-target import 65021:12
+!
+ip vrf CLIENT13
+ rd 65021:13
+ route-target export 65021:13
+ route-target import 65021:13
+!
+ip vrf CLIENT14
+ rd 65021:14
+ route-target export 65021:14
+ route-target import 65021:14
+!
+ip vrf CLIENT15
+ rd 65021:15
+ route-target export 65021:15
+ route-target import 65021:15
+!
+ip vrf CLIENT16
+ rd 65021:16
+ route-target export 65021:16
+ route-target import 65021:16
+!
+ip vrf CLIENT17
+ rd 65021:17
+ route-target export 65021:17
+ route-target import 65021:17
+!
+ip vrf CLIENT18
+ rd 65021:18
+ route-target export 65021:18
+ route-target import 65021:18
+!
+ip vrf CLIENT19
+ rd 65021:19
+ route-target export 65021:19
+ route-target import 65021:19
+!
+ip vrf CLIENT20
+ rd 65021:20
+ route-target export 65021:20
+ route-target import 65021:20
+!
+ip vrf SHARED_101
+ rd 65021:101
+ route-target export 65021:101
+ route-target import 65021:101
+!
 ! ================================================================
-! VLANs
+! VLANs — PE-link block (101-121)
 ! ================================================================
 vlan 101
  name CLIENT1_PE_LINK
@@ -39,32 +151,204 @@ vlan 101
 vlan 102
  name CLIENT2_PE_LINK
 !
-vlan 301
+vlan 103
+ name CLIENT3_PE_LINK
+!
+vlan 104
+ name CLIENT4_PE_LINK
+!
+vlan 105
+ name CLIENT5_PE_LINK
+!
+vlan 106
+ name CLIENT6_PE_LINK
+!
+vlan 107
+ name CLIENT7_PE_LINK
+!
+vlan 108
+ name CLIENT8_PE_LINK
+!
+vlan 109
+ name CLIENT9_PE_LINK
+!
+vlan 110
+ name CLIENT10_PE_LINK
+!
+vlan 111
+ name CLIENT11_PE_LINK
+!
+vlan 112
+ name CLIENT12_PE_LINK
+!
+vlan 113
+ name CLIENT13_PE_LINK
+!
+vlan 114
+ name CLIENT14_PE_LINK
+!
+vlan 115
+ name CLIENT15_PE_LINK
+!
+vlan 116
+ name CLIENT16_PE_LINK
+!
+vlan 117
+ name CLIENT17_PE_LINK
+!
+vlan 118
+ name CLIENT18_PE_LINK
+!
+vlan 119
+ name CLIENT19_PE_LINK
+!
+vlan 120
+ name CLIENT20_PE_LINK
+!
+vlan 121
+ name SHARED_101_PE_LINK
+!
+! ================================================================
+! VLANs — CLIENT LAN block (201-220)
+! ================================================================
+vlan 201
  name CLIENT1_LAN
 !
-vlan 302
+vlan 202
  name CLIENT2_LAN
+!
+vlan 203
+ name CLIENT3_LAN
+!
+vlan 204
+ name CLIENT4_LAN
+!
+vlan 205
+ name CLIENT5_LAN
+!
+vlan 206
+ name CLIENT6_LAN
+!
+vlan 207
+ name CLIENT7_LAN
+!
+vlan 208
+ name CLIENT8_LAN
+!
+vlan 209
+ name CLIENT9_LAN
+!
+vlan 210
+ name CLIENT10_LAN
+!
+vlan 211
+ name CLIENT11_LAN
+!
+vlan 212
+ name CLIENT12_LAN
+!
+vlan 213
+ name CLIENT13_LAN
+!
+vlan 214
+ name CLIENT14_LAN
+!
+vlan 215
+ name CLIENT15_LAN
+!
+vlan 216
+ name CLIENT16_LAN
+!
+vlan 217
+ name CLIENT17_LAN
+!
+vlan 218
+ name CLIENT18_LAN
+!
+vlan 219
+ name CLIENT19_LAN
+!
+vlan 220
+ name CLIENT20_LAN
+!
+! ================================================================
+! VLANs — SHARED_101 outlet LAN block (251-270)
+! Each outlet gets its own /24; all SVIs live in VRF SHARED_101
+! so outlets route to each other via the shared VRF table.
+! ================================================================
+vlan 251
+ name SHARED_101_OUTLET_01
+!
+vlan 252
+ name SHARED_101_OUTLET_02
+!
+vlan 253
+ name SHARED_101_OUTLET_03
+!
+vlan 254
+ name SHARED_101_OUTLET_04
+!
+vlan 255
+ name SHARED_101_OUTLET_05
+!
+vlan 256
+ name SHARED_101_OUTLET_06
+!
+vlan 257
+ name SHARED_101_OUTLET_07
+!
+vlan 258
+ name SHARED_101_OUTLET_08
+!
+vlan 259
+ name SHARED_101_OUTLET_09
+!
+vlan 260
+ name SHARED_101_OUTLET_10
+!
+vlan 261
+ name SHARED_101_OUTLET_11
+!
+vlan 262
+ name SHARED_101_OUTLET_12
+!
+vlan 263
+ name SHARED_101_OUTLET_13
+!
+vlan 264
+ name SHARED_101_OUTLET_14
+!
+vlan 265
+ name SHARED_101_OUTLET_15
+!
+vlan 266
+ name SHARED_101_OUTLET_16
+!
+vlan 267
+ name SHARED_101_OUTLET_17
+!
+vlan 268
+ name SHARED_101_OUTLET_18
+!
+vlan 269
+ name SHARED_101_OUTLET_19
+!
+vlan 270
+ name SHARED_101_OUTLET_20
 !
 ! ================================================================
 ! Uplink to PE Router R1E — 802.1Q Trunk
-! Carries VLANs 101, 102 toward PE sub-interfaces
-!
-! BUG FIXED: Old config used a plain routed port with IP 172.16.1.1
-!   which conflicted with R1E Gi0/0/0.101 (same IP). R1E sends
-!   dot1Q-tagged frames; the switch MUST use a trunk + SVIs.
+! Carries PE-link VLANs 101-121 toward R1E sub-interfaces
 ! ================================================================
 interface GigabitEthernet1/0/1
  description TRUNK-TO-R1E-Gi0/0/0
  switchport trunk encapsulation dot1q
  switchport mode trunk
- switchport trunk allowed vlan 101,102
+ switchport trunk allowed vlan 101-121
  no shutdown
 !
 ! ================================================================
-! SVI — PE-facing (one per VRF, one per VLAN)
-! These IPs are the eBGP peers that R1E expects
-!
-! BUG FIXED: Must be 172.16.1.2 and 172.16.2.2 (not 172.16.1.1)
+! PE-facing SVIs — one per VRF, .2 of each /30
 ! ================================================================
 interface Vlan101
  description CLIENT1-PE-LINK
@@ -78,79 +362,915 @@ interface Vlan102
  ip address 172.16.2.2 255.255.255.252
  no shutdown
 !
+interface Vlan103
+ description CLIENT3-PE-LINK
+ ip vrf forwarding CLIENT3
+ ip address 172.16.3.2 255.255.255.252
+ no shutdown
+!
+interface Vlan104
+ description CLIENT4-PE-LINK
+ ip vrf forwarding CLIENT4
+ ip address 172.16.4.2 255.255.255.252
+ no shutdown
+!
+interface Vlan105
+ description CLIENT5-PE-LINK
+ ip vrf forwarding CLIENT5
+ ip address 172.16.5.2 255.255.255.252
+ no shutdown
+!
+interface Vlan106
+ description CLIENT6-PE-LINK
+ ip vrf forwarding CLIENT6
+ ip address 172.16.6.2 255.255.255.252
+ no shutdown
+!
+interface Vlan107
+ description CLIENT7-PE-LINK
+ ip vrf forwarding CLIENT7
+ ip address 172.16.7.2 255.255.255.252
+ no shutdown
+!
+interface Vlan108
+ description CLIENT8-PE-LINK
+ ip vrf forwarding CLIENT8
+ ip address 172.16.8.2 255.255.255.252
+ no shutdown
+!
+interface Vlan109
+ description CLIENT9-PE-LINK
+ ip vrf forwarding CLIENT9
+ ip address 172.16.9.2 255.255.255.252
+ no shutdown
+!
+interface Vlan110
+ description CLIENT10-PE-LINK
+ ip vrf forwarding CLIENT10
+ ip address 172.16.10.2 255.255.255.252
+ no shutdown
+!
+interface Vlan111
+ description CLIENT11-PE-LINK
+ ip vrf forwarding CLIENT11
+ ip address 172.16.11.2 255.255.255.252
+ no shutdown
+!
+interface Vlan112
+ description CLIENT12-PE-LINK
+ ip vrf forwarding CLIENT12
+ ip address 172.16.12.2 255.255.255.252
+ no shutdown
+!
+interface Vlan113
+ description CLIENT13-PE-LINK
+ ip vrf forwarding CLIENT13
+ ip address 172.16.13.2 255.255.255.252
+ no shutdown
+!
+interface Vlan114
+ description CLIENT14-PE-LINK
+ ip vrf forwarding CLIENT14
+ ip address 172.16.14.2 255.255.255.252
+ no shutdown
+!
+interface Vlan115
+ description CLIENT15-PE-LINK
+ ip vrf forwarding CLIENT15
+ ip address 172.16.15.2 255.255.255.252
+ no shutdown
+!
+interface Vlan116
+ description CLIENT16-PE-LINK
+ ip vrf forwarding CLIENT16
+ ip address 172.16.16.2 255.255.255.252
+ no shutdown
+!
+interface Vlan117
+ description CLIENT17-PE-LINK
+ ip vrf forwarding CLIENT17
+ ip address 172.16.17.2 255.255.255.252
+ no shutdown
+!
+interface Vlan118
+ description CLIENT18-PE-LINK
+ ip vrf forwarding CLIENT18
+ ip address 172.16.18.2 255.255.255.252
+ no shutdown
+!
+interface Vlan119
+ description CLIENT19-PE-LINK
+ ip vrf forwarding CLIENT19
+ ip address 172.16.19.2 255.255.255.252
+ no shutdown
+!
+interface Vlan120
+ description CLIENT20-PE-LINK
+ ip vrf forwarding CLIENT20
+ ip address 172.16.20.2 255.255.255.252
+ no shutdown
+!
+interface Vlan121
+ description SHARED_101-PE-LINK
+ ip vrf forwarding SHARED_101
+ ip address 172.16.101.2 255.255.255.252
+ no shutdown
+!
 ! ================================================================
-! Client-Facing Access Ports (LAN side)
-! Assign to client VLANs; SVI provides L3 gateway
+! Client LAN gateway SVIs (CLIENT1..CLIENT20)
 ! ================================================================
-interface Vlan301
+interface Vlan201
  description CLIENT1-LAN-GATEWAY
  ip vrf forwarding CLIENT1
  ip address 192.168.1.1 255.255.255.0
  no shutdown
 !
-interface Vlan302
+interface Vlan202
  description CLIENT2-LAN-GATEWAY
  ip vrf forwarding CLIENT2
  ip address 192.168.2.1 255.255.255.0
  no shutdown
 !
-! --- Example client access port for CLIENT1 ---
-interface GigabitEthernet1/0/10
+interface Vlan203
+ description CLIENT3-LAN-GATEWAY
+ ip vrf forwarding CLIENT3
+ ip address 192.168.3.1 255.255.255.0
+ no shutdown
+!
+interface Vlan204
+ description CLIENT4-LAN-GATEWAY
+ ip vrf forwarding CLIENT4
+ ip address 192.168.4.1 255.255.255.0
+ no shutdown
+!
+interface Vlan205
+ description CLIENT5-LAN-GATEWAY
+ ip vrf forwarding CLIENT5
+ ip address 192.168.5.1 255.255.255.0
+ no shutdown
+!
+interface Vlan206
+ description CLIENT6-LAN-GATEWAY
+ ip vrf forwarding CLIENT6
+ ip address 192.168.6.1 255.255.255.0
+ no shutdown
+!
+interface Vlan207
+ description CLIENT7-LAN-GATEWAY
+ ip vrf forwarding CLIENT7
+ ip address 192.168.7.1 255.255.255.0
+ no shutdown
+!
+interface Vlan208
+ description CLIENT8-LAN-GATEWAY
+ ip vrf forwarding CLIENT8
+ ip address 192.168.8.1 255.255.255.0
+ no shutdown
+!
+interface Vlan209
+ description CLIENT9-LAN-GATEWAY
+ ip vrf forwarding CLIENT9
+ ip address 192.168.9.1 255.255.255.0
+ no shutdown
+!
+interface Vlan210
+ description CLIENT10-LAN-GATEWAY
+ ip vrf forwarding CLIENT10
+ ip address 192.168.10.1 255.255.255.0
+ no shutdown
+!
+interface Vlan211
+ description CLIENT11-LAN-GATEWAY
+ ip vrf forwarding CLIENT11
+ ip address 192.168.11.1 255.255.255.0
+ no shutdown
+!
+interface Vlan212
+ description CLIENT12-LAN-GATEWAY
+ ip vrf forwarding CLIENT12
+ ip address 192.168.12.1 255.255.255.0
+ no shutdown
+!
+interface Vlan213
+ description CLIENT13-LAN-GATEWAY
+ ip vrf forwarding CLIENT13
+ ip address 192.168.13.1 255.255.255.0
+ no shutdown
+!
+interface Vlan214
+ description CLIENT14-LAN-GATEWAY
+ ip vrf forwarding CLIENT14
+ ip address 192.168.14.1 255.255.255.0
+ no shutdown
+!
+interface Vlan215
+ description CLIENT15-LAN-GATEWAY
+ ip vrf forwarding CLIENT15
+ ip address 192.168.15.1 255.255.255.0
+ no shutdown
+!
+interface Vlan216
+ description CLIENT16-LAN-GATEWAY
+ ip vrf forwarding CLIENT16
+ ip address 192.168.16.1 255.255.255.0
+ no shutdown
+!
+interface Vlan217
+ description CLIENT17-LAN-GATEWAY
+ ip vrf forwarding CLIENT17
+ ip address 192.168.17.1 255.255.255.0
+ no shutdown
+!
+interface Vlan218
+ description CLIENT18-LAN-GATEWAY
+ ip vrf forwarding CLIENT18
+ ip address 192.168.18.1 255.255.255.0
+ no shutdown
+!
+interface Vlan219
+ description CLIENT19-LAN-GATEWAY
+ ip vrf forwarding CLIENT19
+ ip address 192.168.19.1 255.255.255.0
+ no shutdown
+!
+interface Vlan220
+ description CLIENT20-LAN-GATEWAY
+ ip vrf forwarding CLIENT20
+ ip address 192.168.20.1 255.255.255.0
+ no shutdown
+!
+! ================================================================
+! SHARED_101 outlet LAN gateway SVIs (20 outlets, all in VRF SHARED_101)
+! Outlet N uses VLAN (250+N) with subnet 192.168.(100+N).0/24
+! ================================================================
+interface Vlan251
+ description SHARED_101-OUTLET-01-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.101.1 255.255.255.0
+ no shutdown
+!
+interface Vlan252
+ description SHARED_101-OUTLET-02-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.102.1 255.255.255.0
+ no shutdown
+!
+interface Vlan253
+ description SHARED_101-OUTLET-03-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.103.1 255.255.255.0
+ no shutdown
+!
+interface Vlan254
+ description SHARED_101-OUTLET-04-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.104.1 255.255.255.0
+ no shutdown
+!
+interface Vlan255
+ description SHARED_101-OUTLET-05-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.105.1 255.255.255.0
+ no shutdown
+!
+interface Vlan256
+ description SHARED_101-OUTLET-06-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.106.1 255.255.255.0
+ no shutdown
+!
+interface Vlan257
+ description SHARED_101-OUTLET-07-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.107.1 255.255.255.0
+ no shutdown
+!
+interface Vlan258
+ description SHARED_101-OUTLET-08-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.108.1 255.255.255.0
+ no shutdown
+!
+interface Vlan259
+ description SHARED_101-OUTLET-09-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.109.1 255.255.255.0
+ no shutdown
+!
+interface Vlan260
+ description SHARED_101-OUTLET-10-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.110.1 255.255.255.0
+ no shutdown
+!
+interface Vlan261
+ description SHARED_101-OUTLET-11-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.111.1 255.255.255.0
+ no shutdown
+!
+interface Vlan262
+ description SHARED_101-OUTLET-12-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.112.1 255.255.255.0
+ no shutdown
+!
+interface Vlan263
+ description SHARED_101-OUTLET-13-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.113.1 255.255.255.0
+ no shutdown
+!
+interface Vlan264
+ description SHARED_101-OUTLET-14-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.114.1 255.255.255.0
+ no shutdown
+!
+interface Vlan265
+ description SHARED_101-OUTLET-15-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.115.1 255.255.255.0
+ no shutdown
+!
+interface Vlan266
+ description SHARED_101-OUTLET-16-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.116.1 255.255.255.0
+ no shutdown
+!
+interface Vlan267
+ description SHARED_101-OUTLET-17-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.117.1 255.255.255.0
+ no shutdown
+!
+interface Vlan268
+ description SHARED_101-OUTLET-18-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.118.1 255.255.255.0
+ no shutdown
+!
+interface Vlan269
+ description SHARED_101-OUTLET-19-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.119.1 255.255.255.0
+ no shutdown
+!
+interface Vlan270
+ description SHARED_101-OUTLET-20-GATEWAY
+ ip vrf forwarding SHARED_101
+ ip address 192.168.120.1 255.255.255.0
+ no shutdown
+!
+! ================================================================
+! Access ports — CLIENT1..CLIENT20 on ODD Gi1/0/47..Gi1/0/9
+! CLIENT_N is on port (49 - 2*N)  →  CLIENT1=47, CLIENT20=9
+! ================================================================
+interface GigabitEthernet1/0/47
  description CLIENT1-ACCESS
- switchport access vlan 301
+ switchport access vlan 201
  switchport mode access
  spanning-tree portfast
  no shutdown
 !
-! --- Example client access port for CLIENT2 ---
-interface GigabitEthernet1/0/11
+interface GigabitEthernet1/0/45
  description CLIENT2-ACCESS
- switchport access vlan 302
+ switchport access vlan 202
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/43
+ description CLIENT3-ACCESS
+ switchport access vlan 203
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/41
+ description CLIENT4-ACCESS
+ switchport access vlan 204
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/39
+ description CLIENT5-ACCESS
+ switchport access vlan 205
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/37
+ description CLIENT6-ACCESS
+ switchport access vlan 206
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/35
+ description CLIENT7-ACCESS
+ switchport access vlan 207
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/33
+ description CLIENT8-ACCESS
+ switchport access vlan 208
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/31
+ description CLIENT9-ACCESS
+ switchport access vlan 209
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/29
+ description CLIENT10-ACCESS
+ switchport access vlan 210
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/27
+ description CLIENT11-ACCESS
+ switchport access vlan 211
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/25
+ description CLIENT12-ACCESS
+ switchport access vlan 212
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/23
+ description CLIENT13-ACCESS
+ switchport access vlan 213
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/21
+ description CLIENT14-ACCESS
+ switchport access vlan 214
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/19
+ description CLIENT15-ACCESS
+ switchport access vlan 215
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/17
+ description CLIENT16-ACCESS
+ switchport access vlan 216
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/15
+ description CLIENT17-ACCESS
+ switchport access vlan 217
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/13
+ description CLIENT18-ACCESS
+ switchport access vlan 218
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/11
+ description CLIENT19-ACCESS
+ switchport access vlan 219
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/9
+ description CLIENT20-ACCESS
+ switchport access vlan 220
  switchport mode access
  spanning-tree portfast
  no shutdown
 !
 ! ================================================================
-! eBGP to PE Router R1E (AS 65000)
-! Each VRF has its own address-family peering
+! Access ports — SHARED_101 outlets 1..20 on EVEN Gi1/0/48..Gi1/0/10
+! Outlet N is on port (50 - 2*N)  →  outlet 1 = Gi1/0/48, outlet 20 = Gi1/0/10
+! ================================================================
+interface GigabitEthernet1/0/48
+ description SHARED_101-OUTLET-01
+ switchport access vlan 251
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
 !
-! BUG FIXED: Old config peered with 172.16.1.1 (its own IP!) in
-!   both VRFs, and had no network statements. Now correctly peers
-!   with R1E sub-interface IPs and advertises client LANs.
+interface GigabitEthernet1/0/46
+ description SHARED_101-OUTLET-02
+ switchport access vlan 252
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/44
+ description SHARED_101-OUTLET-03
+ switchport access vlan 253
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/42
+ description SHARED_101-OUTLET-04
+ switchport access vlan 254
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/40
+ description SHARED_101-OUTLET-05
+ switchport access vlan 255
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/38
+ description SHARED_101-OUTLET-06
+ switchport access vlan 256
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/36
+ description SHARED_101-OUTLET-07
+ switchport access vlan 257
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/34
+ description SHARED_101-OUTLET-08
+ switchport access vlan 258
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/32
+ description SHARED_101-OUTLET-09
+ switchport access vlan 259
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/30
+ description SHARED_101-OUTLET-10
+ switchport access vlan 260
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/28
+ description SHARED_101-OUTLET-11
+ switchport access vlan 261
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/26
+ description SHARED_101-OUTLET-12
+ switchport access vlan 262
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/24
+ description SHARED_101-OUTLET-13
+ switchport access vlan 263
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/22
+ description SHARED_101-OUTLET-14
+ switchport access vlan 264
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/20
+ description SHARED_101-OUTLET-15
+ switchport access vlan 265
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/18
+ description SHARED_101-OUTLET-16
+ switchport access vlan 266
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/16
+ description SHARED_101-OUTLET-17
+ switchport access vlan 267
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/14
+ description SHARED_101-OUTLET-18
+ switchport access vlan 268
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/12
+ description SHARED_101-OUTLET-19
+ switchport access vlan 269
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
+!
+interface GigabitEthernet1/0/10
+ description SHARED_101-OUTLET-20
+ switchport access vlan 270
+ switchport mode access
+ spanning-tree portfast
+ no shutdown
 !
 ! ================================================================
-! OSPF VRF-Lite for Client Routers
-! Each client router will peer with this switch via OSPF and
-! receive only a default route.
+! OSPF VRF-Lite — one process per CLIENT VRF, one for SHARED_101.
+! Each process redistributes BGP (the default route from PE) and
+! advertises the local LAN(s) so customer routers learn 0.0.0.0/0.
 ! ================================================================
-router ospf 10 vrf CLIENT1
+router ospf 1 vrf CLIENT1
  default-information originate always
  redistribute bgp 65021 subnets
  network 192.168.1.0 0.0.0.255 area 0
 !
-router ospf 20 vrf CLIENT2
+router ospf 2 vrf CLIENT2
  default-information originate always
  redistribute bgp 65021 subnets
  network 192.168.2.0 0.0.0.255 area 0
 !
+router ospf 3 vrf CLIENT3
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.3.0 0.0.0.255 area 0
+!
+router ospf 4 vrf CLIENT4
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.4.0 0.0.0.255 area 0
+!
+router ospf 5 vrf CLIENT5
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.5.0 0.0.0.255 area 0
+!
+router ospf 6 vrf CLIENT6
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.6.0 0.0.0.255 area 0
+!
+router ospf 7 vrf CLIENT7
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.7.0 0.0.0.255 area 0
+!
+router ospf 8 vrf CLIENT8
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.8.0 0.0.0.255 area 0
+!
+router ospf 9 vrf CLIENT9
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.9.0 0.0.0.255 area 0
+!
+router ospf 10 vrf CLIENT10
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.10.0 0.0.0.255 area 0
+!
+router ospf 11 vrf CLIENT11
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.11.0 0.0.0.255 area 0
+!
+router ospf 12 vrf CLIENT12
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.12.0 0.0.0.255 area 0
+!
+router ospf 13 vrf CLIENT13
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.13.0 0.0.0.255 area 0
+!
+router ospf 14 vrf CLIENT14
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.14.0 0.0.0.255 area 0
+!
+router ospf 15 vrf CLIENT15
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.15.0 0.0.0.255 area 0
+!
+router ospf 16 vrf CLIENT16
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.16.0 0.0.0.255 area 0
+!
+router ospf 17 vrf CLIENT17
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.17.0 0.0.0.255 area 0
+!
+router ospf 18 vrf CLIENT18
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.18.0 0.0.0.255 area 0
+!
+router ospf 19 vrf CLIENT19
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.19.0 0.0.0.255 area 0
+!
+router ospf 20 vrf CLIENT20
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.20.0 0.0.0.255 area 0
+!
+router ospf 101 vrf SHARED_101
+ default-information originate always
+ redistribute bgp 65021 subnets
+ network 192.168.101.0 0.0.0.255 area 0
+ network 192.168.102.0 0.0.0.255 area 0
+ network 192.168.103.0 0.0.0.255 area 0
+ network 192.168.104.0 0.0.0.255 area 0
+ network 192.168.105.0 0.0.0.255 area 0
+ network 192.168.106.0 0.0.0.255 area 0
+ network 192.168.107.0 0.0.0.255 area 0
+ network 192.168.108.0 0.0.0.255 area 0
+ network 192.168.109.0 0.0.0.255 area 0
+ network 192.168.110.0 0.0.0.255 area 0
+ network 192.168.111.0 0.0.0.255 area 0
+ network 192.168.112.0 0.0.0.255 area 0
+ network 192.168.113.0 0.0.0.255 area 0
+ network 192.168.114.0 0.0.0.255 area 0
+ network 192.168.115.0 0.0.0.255 area 0
+ network 192.168.116.0 0.0.0.255 area 0
+ network 192.168.117.0 0.0.0.255 area 0
+ network 192.168.118.0 0.0.0.255 area 0
+ network 192.168.119.0 0.0.0.255 area 0
+ network 192.168.120.0 0.0.0.255 area 0
+!
 ! ================================================================
-! eBGP to PE Router R1E (AS 65000)
-! Each VRF has its own address-family peering
+! eBGP to PE Router R1E (AS 65000) — one address-family per VRF
 ! ================================================================
 router bgp 65021
  bgp router-id 192.168.255.1
  bgp log-neighbor-changes
  !
  address-family ipv4 vrf CLIENT1
-  redistribute ospf 10
+  redistribute ospf 1
   neighbor 172.16.1.1 remote-as 65000
   neighbor 172.16.1.1 activate
  exit-address-family
  !
  address-family ipv4 vrf CLIENT2
-  redistribute ospf 20
+  redistribute ospf 2
   neighbor 172.16.2.1 remote-as 65000
   neighbor 172.16.2.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT3
+  redistribute ospf 3
+  neighbor 172.16.3.1 remote-as 65000
+  neighbor 172.16.3.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT4
+  redistribute ospf 4
+  neighbor 172.16.4.1 remote-as 65000
+  neighbor 172.16.4.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT5
+  redistribute ospf 5
+  neighbor 172.16.5.1 remote-as 65000
+  neighbor 172.16.5.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT6
+  redistribute ospf 6
+  neighbor 172.16.6.1 remote-as 65000
+  neighbor 172.16.6.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT7
+  redistribute ospf 7
+  neighbor 172.16.7.1 remote-as 65000
+  neighbor 172.16.7.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT8
+  redistribute ospf 8
+  neighbor 172.16.8.1 remote-as 65000
+  neighbor 172.16.8.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT9
+  redistribute ospf 9
+  neighbor 172.16.9.1 remote-as 65000
+  neighbor 172.16.9.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT10
+  redistribute ospf 10
+  neighbor 172.16.10.1 remote-as 65000
+  neighbor 172.16.10.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT11
+  redistribute ospf 11
+  neighbor 172.16.11.1 remote-as 65000
+  neighbor 172.16.11.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT12
+  redistribute ospf 12
+  neighbor 172.16.12.1 remote-as 65000
+  neighbor 172.16.12.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT13
+  redistribute ospf 13
+  neighbor 172.16.13.1 remote-as 65000
+  neighbor 172.16.13.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT14
+  redistribute ospf 14
+  neighbor 172.16.14.1 remote-as 65000
+  neighbor 172.16.14.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT15
+  redistribute ospf 15
+  neighbor 172.16.15.1 remote-as 65000
+  neighbor 172.16.15.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT16
+  redistribute ospf 16
+  neighbor 172.16.16.1 remote-as 65000
+  neighbor 172.16.16.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT17
+  redistribute ospf 17
+  neighbor 172.16.17.1 remote-as 65000
+  neighbor 172.16.17.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT18
+  redistribute ospf 18
+  neighbor 172.16.18.1 remote-as 65000
+  neighbor 172.16.18.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT19
+  redistribute ospf 19
+  neighbor 172.16.19.1 remote-as 65000
+  neighbor 172.16.19.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf CLIENT20
+  redistribute ospf 20
+  neighbor 172.16.20.1 remote-as 65000
+  neighbor 172.16.20.1 activate
+ exit-address-family
+ !
+ address-family ipv4 vrf SHARED_101
+  redistribute ospf 101
+  neighbor 172.16.101.1 remote-as 65000
+  neighbor 172.16.101.1 activate
  exit-address-family
 !
 ! ================================================================

@@ -1,11 +1,16 @@
 ! ================================================================
-! SW_AGR3 — Catalyst 3750-E — Site 3 Aggregation Switch + DC
+! SW_AGR3 — Catalyst 3750-E — Site 3 DC Aggregation Switch
 ! Connected to R3E via GigabitEthernet1/0/1 (802.1Q trunk)
 ! CE AS: 65023 | PE AS: 65000
 !
-! This switch serves TWO roles:
-!   1. CLIENT5 branch aggregation
-!   2. DC_CENTRAL — hub for Supermicro server / shared services
+! This switch is the DC hub:
+!   1. DC_CENTRAL — Slican IP-PBX + management (10.100.x.x)
+!   2. DC_PUB     — Supermicro public/general compute (203.0.113.0/24)
+!
+! Legacy CLIENT5 tenant has been removed; client tenants now live
+! on SW_AGR1 (CLIENT1-20 + SHARED_101) and SW_AGR2 (CLIENT21-40 +
+! SHARED_102). DC reachability is governed on R3E via 65000:1000
+! (TO_DC_PUB) and 65000:2000 (TO_DC_CENTRAL) community RTs.
 ! ================================================================
 !
 hostname SW_AGR3
@@ -24,11 +29,6 @@ spanning-tree extend system-id
 ! ================================================================
 ! VRF Definitions (IOS classic "ip vrf" for 3750-E)
 ! ================================================================
-ip vrf CLIENT5
- rd 65023:5
- route-target export 65023:5
- route-target import 65023:5
-!
 ip vrf DC_CENTRAL
  rd 65023:100
  route-target export 65023:100
@@ -42,14 +42,11 @@ ip vrf DC_PUB
 ! ================================================================
 ! VLANs
 ! ================================================================
-vlan 105
- name CLIENT5_PE_LINK
-!
 vlan 200
  name DC_CENTRAL_PE_LINK
 !
-vlan 305
- name CLIENT5_LAN
+vlan 201
+ name DC_PUB_PE_LINK
 !
 vlan 500
  name DC_SERVERS
@@ -57,27 +54,23 @@ vlan 500
 vlan 510
  name DC_MGMT
 !
+vlan 600
+ name DC_PUBLIC_VMS
+!
 ! ================================================================
 ! Uplink to PE Router R3E — 802.1Q Trunk
-! Carries VLANs 105, 200 toward PE sub-interfaces
+! Carries VLANs 200, 201 toward PE sub-interfaces
 ! ================================================================
 interface GigabitEthernet1/0/1
  description TRUNK-TO-R3E-Gi0/0/0
  switchport trunk encapsulation dot1q
  switchport mode trunk
- switchport trunk allowed vlan 105,200,201
+ switchport trunk allowed vlan 200,201
  no shutdown
 !
 ! ================================================================
 ! SVI — PE-facing (one per VRF, matching PE sub-if VLAN)
-! These IPs are the eBGP peers that R3E expects
 ! ================================================================
-interface Vlan105
- description CLIENT5-PE-LINK
- ip vrf forwarding CLIENT5
- ip address 172.16.5.2 255.255.255.252
- no shutdown
-!
 interface Vlan200
  description DC-CENTRAL-PE-LINK
  ip vrf forwarding DC_CENTRAL
@@ -91,24 +84,7 @@ interface Vlan201
  no shutdown
 !
 ! ================================================================
-! Client-Facing — CLIENT5 LAN
-! ================================================================
-interface Vlan305
- description CLIENT5-LAN-GATEWAY
- ip vrf forwarding CLIENT5
- ip address 192.168.5.1 255.255.255.0
- no shutdown
-!
-! --- Example CLIENT5 access port ---
-interface GigabitEthernet1/0/10
- description CLIENT5-ACCESS
- switchport access vlan 305
- switchport mode access
- spanning-tree portfast
- no shutdown
-!
-! ================================================================
-! DC_PUB — Public VMs Network (Hosted on Server)
+! DC_PUB — Public VMs Network (Supermicro general compute)
 ! ================================================================
 interface Vlan600
  description PUBLIC-VMS-GATEWAY
@@ -117,7 +93,7 @@ interface Vlan600
  no shutdown
 !
 ! ================================================================
-! DC_CENTRAL — Server VLAN (Supermicro, future services)
+! DC_CENTRAL — Server VLAN (Slican PBX + management)
 ! ================================================================
 interface Vlan500
  description DC-SERVERS-GATEWAY
@@ -131,7 +107,9 @@ interface Vlan510
  ip address 10.100.10.1 255.255.255.0
  no shutdown
 !
-! --- DC Server access ports ---
+! ================================================================
+! DC Server access ports
+! ================================================================
 interface GigabitEthernet1/0/20
  description SUPERMICRO-SERVER-DATA
  switchport access vlan 500
@@ -146,7 +124,6 @@ interface GigabitEthernet1/0/21
  spanning-tree portfast
  no shutdown
 !
-! --- Future: Slican VoIP Server ---
 interface GigabitEthernet1/0/22
  description SLICAN-VOIP-SERVER
  switchport access vlan 500
@@ -154,7 +131,6 @@ interface GigabitEthernet1/0/22
  spanning-tree portfast
  no shutdown
 !
-! --- Public VMs Server Port ---
 interface GigabitEthernet1/0/23
  description PUBLIC-VMS-SERVER
  switchport access vlan 600
@@ -163,15 +139,9 @@ interface GigabitEthernet1/0/23
  no shutdown
 !
 ! ================================================================
-! OSPF VRF-Lite for Client Routers & DC
-! Each client router will peer with this switch via OSPF and
-! receive only a default route.
+! OSPF VRF-Lite — DC VRFs feed default-route to their downstream
+! servers and redistribute server LANs up into eBGP.
 ! ================================================================
-router ospf 50 vrf CLIENT5
- default-information originate always
- redistribute bgp 65023 subnets
- network 192.168.5.0 0.0.0.255 area 0
-!
 router ospf 100 vrf DC_CENTRAL
  default-information originate always
  redistribute bgp 65023 subnets
@@ -185,17 +155,10 @@ router ospf 199 vrf DC_PUB
 !
 ! ================================================================
 ! eBGP to PE Router R3E (AS 65000)
-! Each VRF has its own address-family peering
 ! ================================================================
 router bgp 65023
  bgp router-id 192.168.255.3
  bgp log-neighbor-changes
- !
- address-family ipv4 vrf CLIENT5
-  redistribute ospf 50
-  neighbor 172.16.5.1 remote-as 65000
-  neighbor 172.16.5.1 activate
- exit-address-family
  !
  address-family ipv4 vrf DC_CENTRAL
   redistribute ospf 100
