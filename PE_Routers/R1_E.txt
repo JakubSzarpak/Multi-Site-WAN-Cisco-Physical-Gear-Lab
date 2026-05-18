@@ -11,6 +11,19 @@ segment-routing mpls
   exit-address-family
 !
 ! ================================================================
+! IS-IS process must exist with segment-routing mpls enabled BEFORE
+! any interface attempts "isis prefix-sid index N" — otherwise the
+! parser rejects the prefix-sid line on a fresh boot.
+! ================================================================
+router isis CORE
+ net 49.0001.0102.5501.1011.00
+ is-type level-2-only
+ metric-style wide
+ passive-interface Loopback0
+ fast-reroute per-prefix level-2 all
+ segment-routing mpls
+!
+! ================================================================
 ! VRF Definitions — MUST appear before interfaces that reference them
 ! On IOS-XE, route-target MUST be inside address-family ipv4
 !
@@ -384,18 +397,9 @@ interface GigabitEthernet0/0/0.121
  ip address 172.16.101.1 255.255.255.252
 !
 ! ================================================================
-! IS-IS — Backbone IGP (transport + segment routing)
-! ================================================================
-router isis CORE
- net 49.0001.0102.5501.1011.00
- is-type level-2-only
- metric-style wide
- passive-interface Loopback0
- fast-reroute per-prefix level-2 all
- segment-routing mpls
-!
-! ================================================================
 ! MP-BGP — iBGP VPNv4 to Route Reflector + per-VRF eBGP to CE
+! IS-IS process is configured earlier in the file (ahead of the
+! Loopback interface) so SR-MPLS is active when prefix-SIDs bind.
 ! ================================================================
 router bgp 65000
  bgp log-neighbor-changes
